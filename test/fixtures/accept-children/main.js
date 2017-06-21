@@ -1,4 +1,4 @@
-require('../../index.js');
+require('../../../index.js')();
 
 let dep = require('./dependency.js');
 

@@ -6,7 +6,7 @@ const fork = require('child_process').fork;
 describe('when one level dependency is updated', () => {
   describe('and parent accepts it', () => {
     it('should call accept handler', done => {
-      const child = fork('../../examples/accept-children/main.js', {
+      const child = fork('../fixtures/accept-children/main.js', {
         cwd: __dirname
       });
 
@@ -19,10 +19,7 @@ describe('when one level dependency is updated', () => {
           case 'start':
             touched = true;
             touch.sync(
-              path.join(
-                __dirname,
-                '../../examples/accept-children/dependency.js'
-              )
+              path.join(__dirname, '../fixtures/accept-children/dependency.js')
             );
             break;
           case 'call from accept handler':

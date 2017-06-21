@@ -20,5 +20,8 @@
   "devDependencies": {
     "mocha": "^3.4.2",
     "touch": "^1.0.0"
+  },
+  "dependencies": {
+    "is-builtin-module": "^1.0.0"
   }
 }

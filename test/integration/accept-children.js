@@ -27,6 +27,11 @@ describe('when one level dependency is updated', () => {
               done(new Error('accepted before dependency is changed'));
             }
             accepted = true;
+            child.on('exit', e => {
+              assert.equal(e, 0);
+              done();
+            });
+            child.send('exit');
             break;
           case 'call from dependency':
             depMessages.push(message.param);
@@ -42,7 +47,6 @@ describe('when one level dependency is updated', () => {
                   (depMessages[1][1] - depMessages[0][1]) >
                   0
               );
-              done();
             }
             break;
         }

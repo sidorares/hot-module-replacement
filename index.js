@@ -5,44 +5,35 @@ const isBuiltinModule = require('is-builtin-module');
 // https://github.com/webpack/webpack/blob/0257f6c6e41255cf26230c099fb90140f1f0e0bb/lib/HotModuleReplacement.runtime.js#L77
 // https://github.com/masotime/require-watch/blob/master/src/index.js
 
-// module is changed, who wants to be reloaded and who wants to be notified?
-function collectDependencies(module) {
-  const visited = {};
-  const paths = [];
-  function pathsToAcceptingModules(path, root) {
-    console.log('pathsToAcceptingModules', path);
-    const requiredMe = parents[root.filename];
-    if (!requiredMe) {
-      console.log('No parent for', root.filename);
-      path.pop();
-      return;
-    }
-
-    console.log('REQUIRED ME:', Object.keys(requiredMe));
-
-    for (let next in requiredMe) {
-      let hot = requiredMe[next].hot;
-      if (hot) {
-        if (hot._acceptedDependencies[root.filename] || hot._selfAccepted) {
-          console.log('Accepted everything in ', path, ' by ', next);
-          path.pop();
-          continue;
-        }
-        if (hot._declinedDependencies[root.filename] || hot._selfDecline) {
-          console.log('declined by ', next);
-          continue;
-        }
-      }
-
-      // go next level
-      path.push(root.filename);
-      pathsToAcceptingModules(path, requiredMe[next]);
-    }
-  }
-  pathsToAcceptingModules([], module);
-}
-
 function enableModuleReplacement(opts) {
+  // module is changed, which dependency needs to be reloaded?
+  function collectDependencies(module) {
+    let paths = [];
+    function pathsToAcceptingModules(path, root) {
+      const requiredMe = parents[root.filename];
+      if (module.hot._selfAccepted) {
+        paths.push(path.concat(root.filename));
+        return;
+      }
+      if (module.hot._selfDeclined) {
+        return;
+      }
+      for (let next in requiredMe) {
+        let parentHotRuntime = requiredMe[next].hot;
+        if (parentHotRuntime._acceptedDependencies[root.filename]) {
+          paths.push(path.concat(root.filename));
+          continue;
+        }
+        if (parentHotRuntime._declinedDependencies[root.filename]) {
+          continue;
+        }
+        pathsToAcceptingModules(path.concat(root.filename), requiredMe[next]);
+      }
+    }
+    pathsToAcceptingModules([], module);
+    return paths;
+  }
+
   opts = opts || {};
   function ignore(path) {
     if (isBuiltinModule(path)) {
@@ -61,24 +52,45 @@ function enableModuleReplacement(opts) {
     if (ignore(path)) {
       return;
     }
-    watching[path] = fs.watch(path, function(eventType, filename) {
+    if (watching[path]) {
+      return;
+    }
+    watching[path] = fs.watch(path, { persistent: false }, function(
+      eventType,
+      filename
+    ) {
       const oldModule = require.cache[path];
 
-      //collectDependencies(oldModule);
+      const deps = collectDependencies(oldModule);
+      const reloaded = {};
 
-      const parent = oldModule.parent;
-      if (parent.hot && parent.hot._acceptedDependencies[path]) {
-        if (oldModule.hot && oldModule.hot._disposeHandlers) {
-          oldModule.hot._disposeHandlers.forEach(cb => cb());
-        }
-        const newModule = new Module(path, parent);
-        addHMRHooks(newModule);
-        try {
-          newModule.load(path);
-          require.cache[path] = newModule;
-          parent.hot._acceptedDependencies[path](path);
-        } catch (e) {
-          console.log(e);
+      for (let d = 0; d < deps.length; ++d) {
+        for (let l = 0; l < deps[d].length; ++l) {
+          const path = deps[d][l];
+          if (reloaded[path]) {
+            continue;
+          }
+          reloaded[path] = true;
+          const oldModule = require.cache[path];
+          if (oldModule.hot._disposeHandlers) {
+            oldModule.hot._disposeHandlers.forEach(h => h());
+          }
+          const newModule = new Module(path, oldModule.parent);
+          addHMRHooks(newModule);
+          try {
+            newModule.load(path);
+            require.cache[path] = newModule;
+            const ps = parents[path];
+            for (parentPath in ps) {
+              let parent = require.cache[parentPath];
+              if (parent.hot._acceptedDependencies[path]) {
+                // TODO: try/catch here?
+                parent.hot._acceptedDependencies[path](path);
+              }
+            }
+          } catch (e) {
+            console.log(e);
+          }
         }
       }
     });

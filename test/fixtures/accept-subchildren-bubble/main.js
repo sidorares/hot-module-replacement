@@ -1,9 +1,10 @@
 require('../../../index.js')();
 
 let dep = require('./dependency.js');
+let dep2 = require('./dependency-level2');
 
 const main = () => {
-  dep();
+  console.log('Dep:', dep());
 };
 
 process.send && process.send({ message: 'start' });
@@ -18,7 +19,8 @@ process.on('message', function(msg) {
 });
 
 if (module.hot) {
-  module.hot.accept('./dependency', function(updatedDep) {
+  module.hot.accept(['./dependency'], function(updatedDep) {
+    console.log('Accept handler!', updatedDep);
     process.send &&
       process.send({
         message: 'call from accept handler'

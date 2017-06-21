@@ -6,6 +6,9 @@
   "scripts": {
     "test": "mocha -t 5000 ./test/integration/*.js"
   },
+  "files": [
+    "index.js"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sidorares/hot-module-replacement.git"

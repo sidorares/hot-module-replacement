@@ -31,3 +31,11 @@ You need to explicitly mark any subtree as 'hot reloable' by calling `hot.accept
     })
   }
 ```
+
+## Similar projects:
+
+- https://github.com/yyrdl/dload
+
+### webpack hmr on the server
+
+- https://hackernoon.com/hot-reload-all-the-things-ec0fed8ab0

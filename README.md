@@ -34,8 +34,11 @@ You need to explicitly mark any subtree as 'hot reloable' by calling `hot.accept
 
 ## Similar projects:
 
-- https://github.com/yyrdl/dload
+- https://github.com/yyrdl/dload ( forces you to use own module api for replaceables modules )
+- https://github.com/rlindskog/solit ( transpiles all files on start )
 
 ### webpack hmr on the server
-
+- https://github.com/palmerhq/backpack
 - https://hackernoon.com/hot-reload-all-the-things-ec0fed8ab0
+- https://github.com/jaredpalmer/razzle
+- https://github.com/jlongster/backend-with-webpack ( and http://jlongster.com/Backend-Apps-with-Webpack--Part-III )

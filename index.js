@@ -1,4 +1,4 @@
-const fs = require('fs');
+const watch = require('node-watch');
 const Module = require('module');
 const isBuiltinModule = require('is-builtin-module');
 
@@ -55,7 +55,7 @@ function enableModuleReplacement(opts) {
     if (watching[path]) {
       return;
     }
-    watching[path] = fs.watch(path, { persistent: false }, function(
+    watching[path] = watch(path, { persistent: false }, function(
       eventType,
       filename
     ) {

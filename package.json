@@ -25,6 +25,7 @@
     "touch": "^1.0.0"
   },
   "dependencies": {
-    "is-builtin-module": "^1.0.0"
+    "is-builtin-module": "^1.0.0",
+    "node-watch": "^0.5.8"
   }
 }

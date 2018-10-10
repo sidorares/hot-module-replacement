@@ -15,11 +15,11 @@ Put this code somewhere in your code to initialise hot reload
 ```js
 require('hot-module-replacement')({
   // options are optional
-  ignore: /node_modues/  // regexp to decide if module should be ignored; also can be a function accepting string and returning true/false
+  ignore: /node_modules/  // regexp to decide if module should be ignored; also can be a function accepting string and returning true/false
 })
 ```
 
-You need to explicitly mark any subtree as 'hot reloable' by calling `hot.accept()`
+You need to explicitly mark any subtree as 'hot reloadable' by calling `hot.accept()`
 
 ```js
   let foo = require('./util/foo.js');

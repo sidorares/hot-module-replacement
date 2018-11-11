@@ -36,6 +36,7 @@ You need to explicitly mark any subtree as 'hot reloadable' by calling `hot.acce
 
 - https://github.com/yyrdl/dload ( forces you to use own module api for replaceables modules )
 - https://github.com/rlindskog/solit ( transpiles all files on start )
+- https://github.com/fgnass/node-dev
 
 ### webpack hmr on the server
 - https://github.com/palmerhq/backpack

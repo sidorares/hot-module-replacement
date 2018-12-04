@@ -8,15 +8,13 @@ const isBuiltinModule = require('is-builtin-module');
 function enableModuleReplacement(opts) {
   // TODO: use proxy here instead of just monkey-patching so all furure extensions are tracked automatically
   const savedExtensions = Module._extensions;
-  const _extensions = Object.keys(savedExtensions).reduce((result, extension) => {
-    return {
-      ...result,
-      [extension]: function(module, filename) {
-        addHMRHooks(module);
-        savedExtensions[extension](module, filename);
-      }
+  const _extensions = {};
+  Object.keys(savedExtensions).forEach(extension => {
+    _extensions[extension] = function(module, filename) {
+      addHMRHooks(module);
+      savedExtensions[extension](module, filename);
     };
-  }, {});
+  });
 
   Module._extensions = _extensions;
 

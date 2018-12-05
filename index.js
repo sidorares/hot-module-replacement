@@ -6,6 +6,18 @@ const isBuiltinModule = require('is-builtin-module');
 // https://github.com/masotime/require-watch/blob/master/src/index.js
 
 function enableModuleReplacement(opts) {
+  // TODO: use proxy here instead of just monkey-patching so all furure extensions are tracked automatically
+  const savedExtensions = Module._extensions;
+  const _extensions = {};
+  Object.keys(savedExtensions).forEach(extension => {
+    _extensions[extension] = function(module, filename) {
+      addHMRHooks(module);
+      savedExtensions[extension](module, filename);
+    };
+  });
+
+  Module._extensions = _extensions;
+
   // module is changed, which dependency needs to be reloaded?
   function collectDependencies(module) {
     let paths = [];
@@ -55,10 +67,7 @@ function enableModuleReplacement(opts) {
     if (watching[path]) {
       return;
     }
-    watching[path] = watch(path, { persistent: false }, function(
-      eventType,
-      filename
-    ) {
+    watching[path] = watch(path, { persistent: false }, function(eventType, filename) {
       const oldModule = require.cache[path];
 
       const deps = collectDependencies(oldModule);
@@ -123,11 +132,6 @@ function enableModuleReplacement(opts) {
     return originalLoad(request, parent, isMain);
   };
 
-  Module.prototype._compile = function(content, filename) {
-    addHMRHooks(this);
-    return originalCompile.call(this, content, filename);
-  };
-
   if (module.parent) {
     if (!module.parent.hot) {
       addHMRHooks(module.parent);
@@ -156,16 +160,13 @@ function enableModuleReplacement(opts) {
         else if (typeof dep === 'function') hot._selfAccepted = dep;
         else if (typeof dep === 'object')
           for (var i = 0; i < dep.length; i++)
-            hot._acceptedDependencies[resolve(dep[i])] =
-              callback || function() {};
-        else
-          hot._acceptedDependencies[resolve(dep)] = callback || function() {};
+            hot._acceptedDependencies[resolve(dep[i])] = callback || function() {};
+        else hot._acceptedDependencies[resolve(dep)] = callback || function() {};
       },
       decline: function(dep) {
         if (typeof dep === 'undefined') hot._selfDeclined = true;
         else if (typeof dep === 'object')
-          for (var i = 0; i < dep.length; i++)
-            hot._declinedDependencies[resolve(dep[i])] = true;
+          for (var i = 0; i < dep.length; i++) hot._declinedDependencies[resolve(dep[i])] = true;
         else hot._declinedDependencies[resolve(dep)] = true;
       },
       dispose: function(callback) {

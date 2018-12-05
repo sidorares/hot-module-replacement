@@ -24,7 +24,7 @@ describe('when one level JSON dependency is updated', () => {
               JSON.stringify({ value: updatedValue })
             );
             break;
-          case 'vall from main':
+          case 'call from main':
             assert.equal(message.value, 42);
             break;
 

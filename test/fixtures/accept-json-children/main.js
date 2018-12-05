@@ -3,7 +3,7 @@ require('../../../index.js')();
 let dep = require('./dependency.json');
 
 const main = () => {
-  process.send && process.send({ message: 'call from main', param: dep.value });
+  process.send && process.send({ message: 'call from main', value: dep.value });
 };
 
 process.send && process.send({ message: 'start' });

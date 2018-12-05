@@ -18,14 +18,14 @@ describe('when one level JSON dependency is updated', () => {
       child.on('message', message => {
         switch (message.message) {
           case 'start':
+            break;
+          case 'call from main':
+            assert.equal(message.value, 42);
             touched = true;
             fs.writeFileSync(
               path.join(__dirname, '../fixtures/accept-json-children/dependency.json'),
               JSON.stringify({ value: updatedValue })
             );
-            break;
-          case 'call from main':
-            assert.equal(message.value, 42);
             break;
 
           case 'call from accept handler':

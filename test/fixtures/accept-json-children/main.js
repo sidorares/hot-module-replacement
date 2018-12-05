@@ -25,6 +25,5 @@ if (module.hot) {
         message: 'call from accept handler',
         value: dep.value
       });
-    main();
   });
 }

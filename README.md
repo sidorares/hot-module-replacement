@@ -1,7 +1,7 @@
 # hot-module-replacement
 Hot module replacement for node.js
 
-This module tries to mimic [webpack HMR](https://webpack.github.io/docs/hot-module-replacement.html) API
+This module tries to mimic [webpack HMR](https://webpack.js.org/api/hot-module-replacement/) API
 
 ## Installation
 ```js

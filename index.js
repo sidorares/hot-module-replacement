@@ -70,7 +70,7 @@ function enableModuleReplacement(opts) {
     watching[path] = watch(path, { persistent: false }, function(eventType, filename) {
       const oldModule = require.cache[path];
 
-      const deps = collectDependencies(oldModule);
+      const deps = oldModule ? collectDependencies(oldModule) : [];
       const reloaded = {};
 
       for (let d = 0; d < deps.length; ++d) {

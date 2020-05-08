@@ -3,11 +3,13 @@
   "version": "3.0.3",
   "description": "Hot module replacement for node.js",
   "main": "index.js",
+  "typings": "index.d.ts",
   "scripts": {
     "test": "mocha -t 5000 ./test/integration/*.js"
   },
   "files": [
-    "index.js"
+    "index.js",
+    "index.d.ts"
   ],
   "repository": {
     "type": "git",

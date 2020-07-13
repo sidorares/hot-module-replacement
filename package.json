@@ -21,7 +21,7 @@
   },
   "homepage": "https://github.com/sidorares/hot-module-replacement#readme",
   "devDependencies": {
-    "mocha": "^5.2.0",
+    "mocha": "^8.0.1",
     "touch": "^1.0.0"
   },
   "dependencies": {

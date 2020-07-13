@@ -10,7 +10,7 @@ This module tries to mimic [webpack HMR](https://webpack.js.org/api/hot-module-r
 
 ## Usage
 
-Put this code somewhere in your code to initialise hot reload
+Put this code at the beginning of your file to initialise hot reload
 
 ```js
 require('hot-module-replacement')({

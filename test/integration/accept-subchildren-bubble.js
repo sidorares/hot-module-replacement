@@ -1,13 +1,13 @@
-const assert = require('assert');
-const touch = require('touch');
-const path = require('path');
-const fork = require('child_process').fork;
+const assert = require("assert");
+const touch = require("touch");
+const path = require("path");
+const fork = require("child_process").fork;
 
-describe('when nested dependency is updated', () => {
-  describe('and parent accepts dependency that depend on it', () => {
-    it('should call accept handler and reload all dependencies on path', done => {
-      const child = fork('../fixtures/accept-subchildren-bubble/main.js', {
-        cwd: __dirname
+describe("when nested dependency is updated", () => {
+  describe("and parent accepts dependency that depend on it", () => {
+    it("should call accept handler and reload all dependencies on path", (done) => {
+      const child = fork("../fixtures/accept-subchildren-bubble/main.js", {
+        cwd: __dirname,
       });
 
       let touched = false;
@@ -16,32 +16,69 @@ describe('when nested dependency is updated', () => {
       const depMessages1 = [];
       const depMessages2 = [];
 
-      child.on('message', message => {
+      const events = [];
+
+      child.on("message", (message) => {
         switch (message.message) {
-          case 'start':
+          case "onReloaded":
+          case "onWatched":
+            events.push(message);
+            break;
+          case "start":
             touched = true;
             touch.sync(
               path.join(
                 __dirname,
-                '../fixtures/accept-subchildren-bubble/dependency-level2.js'
+                "../fixtures/accept-subchildren-bubble/dependency-level2.js"
               )
             );
             break;
-          case 'call from accept handler':
+          case "call from accept handler":
             if (!touched) {
-              done(new Error('accepted before dependency is changed'));
+              done(new Error("accepted before dependency is changed"));
             }
             accepted = true;
-            child.on('exit', e => {
+            child.on("exit", (e) => {
               assert.equal(e, 0);
               assert.equal(depMessages.length, 2);
               assert.equal(depMessages1.length, 2);
               assert.equal(depMessages2.length, 2);
+
+              const watchedFiles = events
+                .filter((event) => event.message === "onWatched")
+                .map((event) =>
+                  event.path.slice(event.path.lastIndexOf("/") + 1)
+                );
+              const reloadedFiles = events
+                .filter((event) => event.message === "onReloaded")
+                .map((event) => ({
+                  paths: event.paths.map((path) =>
+                    path.slice(path.lastIndexOf("/") + 1)
+                  ),
+                  roots: event.roots.map((path) =>
+                    path.slice(path.lastIndexOf("/") + 1)
+                  ),
+                }));
+              assert.deepEqual(watchedFiles, [
+                "dependency.js",
+                "dependency-level1.js",
+                "dependency-level2.js",
+              ]);
+              assert.deepEqual(reloadedFiles, [
+                {
+                  paths: [
+                    "dependency-level2.js",
+                    "dependency-level1.js",
+                    "dependency.js",
+                  ],
+                  roots: ["dependency-level2.js"],
+                },
+              ]);
               done();
             });
-            child.send('exit');
+            child.send("exit");
             break;
-          case 'call from dependency 1':
+          case "call from dependency 1":
             depMessages1.push(message.param);
             if (accepted) {
               // this is second call
@@ -57,7 +94,7 @@ describe('when nested dependency is updated', () => {
               );
             }
             break;
-          case 'call from dependency 2':
+          case "call from dependency 2":
             depMessages2.push(message.param);
             if (accepted) {
               // this is second call
@@ -73,7 +110,7 @@ describe('when nested dependency is updated', () => {
               );
             }
             break;
-          case 'call from dependency':
+          case "call from dependency":
             depMessages.push(message.param);
             if (accepted) {
               // this is second call

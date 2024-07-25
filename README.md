@@ -34,6 +34,8 @@ You need to explicitly mark any subtree as 'hot reloadable' by calling `hot.acce
 
 ## Similar projects:
 
+- https://github.com/Julien-R44/hot-hook
+- https://github.com/braidnetworks/dynohot
 - https://github.com/yyrdl/dload ( forces you to use own module api for replaceables modules )
 - https://github.com/rlindskog/solit ( transpiles all files on start )
 - https://github.com/fgnass/node-dev

@@ -1,6 +1,6 @@
-const watch = require('node-watch');
-const Module = require('module');
-const isBuiltinModule = require('is-builtin-module');
+const watch = require("node-watch");
+const Module = require("module");
+const isBuiltinModule = require("is-builtin-module");
 
 // https://github.com/webpack/webpack/blob/0257f6c6e41255cf26230c099fb90140f1f0e0bb/lib/HotModuleReplacement.runtime.js#L77
 // https://github.com/masotime/require-watch/blob/master/src/index.js
@@ -9,8 +9,8 @@ function enableModuleReplacement(opts) {
   // TODO: use proxy here instead of just monkey-patching so all furure extensions are tracked automatically
   const savedExtensions = Module._extensions;
   const _extensions = {};
-  Object.keys(savedExtensions).forEach(extension => {
-    _extensions[extension] = function(module, filename) {
+  Object.keys(savedExtensions).forEach((extension) => {
+    _extensions[extension] = function (module, filename) {
       addHMRHooks(module);
       savedExtensions[extension](module, filename);
     };
@@ -51,7 +51,7 @@ function enableModuleReplacement(opts) {
     if (isBuiltinModule(path)) {
       return true;
     }
-    if (typeof opts.ignore === 'function') {
+    if (typeof opts.ignore === "function") {
       return opts.ignore(path);
     }
     if (opts.ignore instanceof RegExp) {
@@ -60,19 +60,13 @@ function enableModuleReplacement(opts) {
   }
 
   const watching = {};
-  function startWatching(path) {
-    if (ignore(path)) {
-      return;
-    }
-    if (watching[path]) {
-      return;
-    }
-    watching[path] = watch(path, { persistent: false }, function(eventType, filename) {
+
+  function invalidateModules(paths) {
+    const reloaded = {};
+
+    for (const path of paths) {
       const oldModule = require.cache[path];
-
       const deps = oldModule ? collectDependencies(oldModule) : [];
-      const reloaded = {};
-
       for (let d = 0; d < deps.length; ++d) {
         for (let l = 0; l < deps[d].length; ++l) {
           const path = deps[d][l];
@@ -82,7 +76,7 @@ function enableModuleReplacement(opts) {
           reloaded[path] = true;
           const oldModule = require.cache[path];
           if (oldModule.hot._disposeHandlers) {
-            oldModule.hot._disposeHandlers.forEach(h => h());
+            oldModule.hot._disposeHandlers.forEach((h) => h());
           }
           const newModule = new Module(path, oldModule.parent);
           addHMRHooks(newModule);
@@ -102,7 +96,30 @@ function enableModuleReplacement(opts) {
           }
         }
       }
+    }
+
+    if (opts.onReloaded) {
+      opts.onReloaded(Object.keys(reloaded), paths);
+    }
+  }
+
+  function startWatching(path) {
+    if (ignore(path)) {
+      return;
+    }
+    if (watching[path]) {
+      return;
+    }
+    watching[path] = watch(path, { persistent: false }, function (
+      eventType,
+      filename
+    ) {
+      invalidateModules([path]);
     });
+
+    if (opts.onWatched) {
+      opts.onWatched(path);
+    }
   }
 
   // monkey-patch require
@@ -111,7 +128,7 @@ function enableModuleReplacement(opts) {
   const originalCompile = Module.prototype._compile;
 
   const parents = {};
-  Module._load = function(request, parent, isMain) {
+  Module._load = function (request, parent, isMain) {
     const requirePath = Module._resolveFilename(request, parent);
     if (ignore(requirePath)) {
       return originalLoad(request, parent, isMain);
@@ -139,7 +156,7 @@ function enableModuleReplacement(opts) {
   }
 
   function addHMRHooks(module) {
-    const resolve = name => {
+    const resolve = (name) => {
       return Module._resolveFilename(name, module);
     };
     // copied directly from webpack HMR
@@ -155,30 +172,33 @@ function enableModuleReplacement(opts) {
 
       // Module API
       active: true,
-      accept: function(dep, callback) {
-        if (typeof dep === 'undefined') hot._selfAccepted = true;
-        else if (typeof dep === 'function') hot._selfAccepted = dep;
-        else if (typeof dep === 'object')
+      accept: function (dep, callback) {
+        if (typeof dep === "undefined") hot._selfAccepted = true;
+        else if (typeof dep === "function") hot._selfAccepted = dep;
+        else if (typeof dep === "object")
           for (var i = 0; i < dep.length; i++)
-            hot._acceptedDependencies[resolve(dep[i])] = callback || function() {};
-        else hot._acceptedDependencies[resolve(dep)] = callback || function() {};
+            hot._acceptedDependencies[resolve(dep[i])] =
+              callback || function () {};
+        else
+          hot._acceptedDependencies[resolve(dep)] = callback || function () {};
       },
-      decline: function(dep) {
-        if (typeof dep === 'undefined') hot._selfDeclined = true;
-        else if (typeof dep === 'object')
-          for (var i = 0; i < dep.length; i++) hot._declinedDependencies[resolve(dep[i])] = true;
+      decline: function (dep) {
+        if (typeof dep === "undefined") hot._selfDeclined = true;
+        else if (typeof dep === "object")
+          for (var i = 0; i < dep.length; i++)
+            hot._declinedDependencies[resolve(dep[i])] = true;
         else hot._declinedDependencies[resolve(dep)] = true;
       },
-      dispose: function(callback) {
+      dispose: function (callback) {
         hot._disposeHandlers.push(callback);
       },
-      addDisposeHandler: function(callback) {
+      addDisposeHandler: function (callback) {
         hot._disposeHandlers.push(callback);
       },
-      removeDisposeHandler: function(callback) {
+      removeDisposeHandler: function (callback) {
         var idx = hot._disposeHandlers.indexOf(callback);
         if (idx >= 0) hot._disposeHandlers.splice(idx, 1);
-      }
+      },
       /*
       // TODO: Management API
       check: hotCheck,
@@ -202,6 +222,8 @@ function enableModuleReplacement(opts) {
     };
     module.hot = hot;
   }
+
+  return { invalidateModules };
 }
 
 module.exports = enableModuleReplacement;

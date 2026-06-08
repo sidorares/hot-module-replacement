@@ -3,7 +3,17 @@ const path = require('path');
 const fs = require('fs');
 const fork = require('child_process').fork;
 
+const dependencyPath = path.join(
+  __dirname,
+  '../fixtures/accept-json-children/dependency.json'
+);
+const originalDependency = fs.readFileSync(dependencyPath, 'utf8');
+
 describe('when one level JSON dependency is updated', () => {
+  afterEach(() => {
+    fs.writeFileSync(dependencyPath, originalDependency);
+  });
+
   describe('and parent accepts it', () => {
     it('should call accept handler', done => {
       const child = fork('../fixtures/accept-json-children/main.js', {
@@ -23,7 +33,7 @@ describe('when one level JSON dependency is updated', () => {
             assert.equal(message.value, 42);
             touched = true;
             fs.writeFileSync(
-              path.join(__dirname, '../fixtures/accept-json-children/dependency.json'),
+              dependencyPath,
               JSON.stringify({ value: updatedValue })
             );
             break;

@@ -8,7 +8,7 @@ This module tries to mimic [webpack HMR](https://webpack.js.org/api/hot-module-r
   npm install --save-dev hot-module-replacement
 ```
 
-## Usage
+## CommonJS usage
 
 Put this code somewhere in your code to initialise hot reload
 
@@ -32,10 +32,32 @@ You need to explicitly mark any subtree as 'hot reloadable' by calling `hot.acce
   }
 ```
 
+## ESM usage (Node >= 22.15)
+
+Requires `module.registerHooks` (Node **22.15+**). CommonJS HMR works on Node 18+.
+
+Static imports are rewritten to mutable `let` bindings and `import.meta.hot.accept('./dep')` gets an auto-generated refresh callback.
+
+```bash
+node --enable-source-maps --import hot-module-replacement/register ./server.mjs
+```
+
+```js
+import routes, { a } from './routes.js';
+
+app.use('/', routes);
+
+if (import.meta.hot) {
+  import.meta.hot.accept('./routes.js'); // `routes` and `a` refresh automatically
+}
+```
+
+See `examples/esm/` (repo dev: `npm start`; after install from npm: `npm run start:package`).
+
 ## Similar projects:
 
+- https://github.com/laverdet/dynohot — full live bindings via generator-based module runtime (heavier, closer to webpack)
 - https://github.com/Julien-R44/hot-hook
-- https://github.com/braidnetworks/dynohot
 - https://github.com/yyrdl/dload ( forces you to use own module api for replaceables modules )
 - https://github.com/rlindskog/solit ( transpiles all files on start )
 - https://github.com/fgnass/node-dev

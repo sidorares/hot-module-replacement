@@ -1,19 +1,38 @@
 {
   "name": "hot-module-replacement",
-  "version": "3.0.4",
-  "description": "Hot module replacement for node.js",
+  "version": "4.0.0",
+  "description": "Hot module replacement for Node.js (CommonJS and ESM)",
   "main": "index.js",
   "scripts": {
-    "test": "mocha -t 5000 ./test/integration/*.js"
+    "test": "mocha -t 5000 ./test/integration/*.js ./test/integration/esm/*.test.mjs",
+    "test:esm": "mocha -t 5000 ./test/integration/esm/*.test.mjs",
+    "test:cjs": "mocha -t 5000 ./test/integration/*.js",
+    "prepublishOnly": "npm test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./register": "./esm/register.mjs",
+    "./esm/register": "./esm/register.mjs"
   },
   "files": [
-    "index.js"
+    "index.js",
+    "esm"
+  ],
+  "keywords": [
+    "hmr",
+    "hot-module-replacement",
+    "hot-reload",
+    "esm",
+    "commonjs",
+    "node"
   ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sidorares/hot-module-replacement.git"
   },
-  "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
@@ -25,7 +44,9 @@
     "touch": "^1.0.0"
   },
   "dependencies": {
+    "acorn": "^8.16.0",
     "is-builtin-module": "^1.0.0",
+    "magic-string": "^0.30.21",
     "node-watch": "^0.5.8"
   }
 }

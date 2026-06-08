@@ -57,3 +57,9 @@ typings/
 # dotenv environment variables file
 .env
 
+# OS
+.DS_Store
+
+# Example app installs (not part of the published package)
+examples/*/node_modules/
+

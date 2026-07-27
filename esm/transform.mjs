@@ -105,7 +105,12 @@ function rewriteImport(node, source) {
     namedInits.length > 0
       ? `;queueMicrotask(()=>{${namedInits.join(';')}})`
       : '';
-  const replacement = `${importNs}; ${lets.join('; ')}; ${binds.join('; ')}${namedInit}`;
+  // Trailing semicolon: the replacement swallows the original statement's
+  // terminator (node.end includes it), so without one the next statement
+  // only survives via ASI — which single-line sources (minified output,
+  // injected preludes, a statement after the import on the same line)
+  // don't get.
+  const replacement = `${importNs}; ${lets.join('; ')}; ${binds.join('; ')}${namedInit};`;
   return { start: node.start, end: node.end, replacement };
 }
 

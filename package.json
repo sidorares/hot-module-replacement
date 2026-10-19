@@ -44,6 +44,7 @@
     "touch": "^1.0.0"
   },
   "dependencies": {
+    "@jridgewell/remapping": "^2.3.5",
     "acorn": "^8.16.0",
     "is-builtin-module": "^1.0.0",
     "magic-string": "^0.30.21",

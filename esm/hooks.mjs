@@ -97,13 +97,17 @@ export function enableModuleReplacement(options) {
         return result;
       }
 
+      // The preamble goes in through the transform, so the source map counts
+      // its lines: prepended here, after the map was made, every position in
+      // the module read that many lines off.
       const filename = fileURLToPath(url);
-      const { code, map } = transformModuleSource(source, filename);
-      const withMap = appendSourceMap(code, map);
+      const { code, map } = transformModuleSource(source, filename, {
+        preamble
+      });
 
       return {
         ...result,
-        source: `${preamble}\n${withMap}`
+        source: appendSourceMap(code, map)
       };
     }
   });

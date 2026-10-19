@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import remapping from '@jridgewell/remapping';
 import { parse } from 'acorn';
 import MagicString from 'magic-string';
 
@@ -153,20 +156,76 @@ function rewriteAccept(node, source) {
 }
 
 /**
+ * The source map a module arrived with, when the loader below this one (a
+ * TypeScript or JSX transform, or a build that wrote `.map` files) left one:
+ * the last `sourceMappingURL` comment, which is the one Node reads. An inline
+ * `data:` URL is decoded; any other URL is read relative to the module.
+ * Null when there is none, or it cannot be read or parsed.
+ *
+ * @param {string} source
+ * @param {string} filename
+ * @returns {{ map: object, start: number, end: number } | null}
+ */
+function incomingSourceMap(source, filename) {
+  const comment = /\/\/[#@][ \t]+sourceMappingURL=([^\s'"]+)[ \t]*/g;
+  let last = null;
+  for (let match; (match = comment.exec(source)); ) {
+    last = match;
+  }
+  if (!last) {
+    return null;
+  }
+  const url = last[1];
+  try {
+    let json;
+    if (url.startsWith('data:')) {
+      const comma = url.indexOf(',');
+      const meta = url.slice(5, comma);
+      const data = url.slice(comma + 1);
+      json = meta.endsWith(';base64')
+        ? Buffer.from(data, 'base64').toString('utf8')
+        : decodeURIComponent(data);
+    } else {
+      json = readFileSync(
+        path.resolve(path.dirname(filename), decodeURI(url)),
+        'utf8'
+      );
+    }
+    return {
+      map: JSON.parse(json),
+      start: last.index,
+      end: last.index + last[0].length
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Transform static imports to mutable `let` bindings and auto-inject accept callbacks.
  *
  * Line numbers: each import is replaced one-for-one on the same line when the source
  * used one line per import; otherwise MagicString + inline source map preserves stacks
  * when Node is run with --enable-source-maps.
  *
+ * `options.preamble` is prepended on lines of its own, and the map accounts for
+ * them. A map the source arrived with is composed into the one returned, so a
+ * position resolves to the file a loader below this one read rather than to
+ * the code it handed over.
+ *
  * @param {string} source
  * @param {string} filename
+ * @param {{ preamble?: string }} [options]
  * @returns {{ code: string, map: object | null }}
  */
-export function transformModuleSource(source, filename) {
+export function transformModuleSource(source, filename, options = {}) {
+  const { preamble = '' } = options;
   bindingCounter = 0;
 
-  let ast;
+  /** @type {{ start: number, end: number, replacement: string }[]} */
+  const edits = [];
+
+  let ast = null;
   try {
     ast = parse(source, {
       ecmaVersion: 'latest',
@@ -174,33 +233,33 @@ export function transformModuleSource(source, filename) {
       allowAwaitOutsideFunction: true
     });
   } catch {
-    return { code: source, map: null };
+    // left for Node to report; the preamble still goes on, and is mapped
   }
 
-  /** @type {{ start: number, end: number, replacement: string }[]} */
-  const edits = [];
-
-  for (const node of ast.body) {
-    if (node.type === 'ImportDeclaration') {
-      const edit = rewriteImport(node, source);
-      if (edit) {
-        edits.push(edit);
-      }
-    }
-  }
-
-  walk(ast, {
-    CallExpression(node) {
-      if (isImportMetaHotAccept(node)) {
-        const edit = rewriteAccept(node, source);
+  if (ast) {
+    for (const node of ast.body) {
+      if (node.type === 'ImportDeclaration') {
+        const edit = rewriteImport(node, source);
         if (edit) {
           edits.push(edit);
         }
       }
     }
-  });
 
-  if (edits.length === 0) {
+    walk(ast, {
+      CallExpression(node) {
+        if (isImportMetaHotAccept(node)) {
+          const edit = rewriteAccept(node, source);
+          if (edit) {
+            edits.push(edit);
+          }
+        }
+      }
+    });
+  }
+
+  // Untouched, the source keeps its own sourceMappingURL, which still holds.
+  if (edits.length === 0 && !preamble) {
     return { code: source, map: null };
   }
 
@@ -211,12 +270,27 @@ export function transformModuleSource(source, filename) {
     magic.overwrite(start, end, replacement, { contentOnly: true });
   }
 
-  const map = magic.generateMap({
+  // The map returned replaces the incoming one, so its comment goes: the
+  // line stays, empty, so nothing below it moves.
+  const incoming = incomingSourceMap(source, filename);
+  if (incoming && !edits.some(e => e.start < incoming.end && incoming.start < e.end)) {
+    magic.remove(incoming.start, incoming.end);
+  }
+
+  if (preamble) {
+    magic.prepend(`${preamble}\n`);
+  }
+
+  const own = magic.generateMap({
     source: filename,
     file: filename,
     hires: true,
     includeContent: true
   });
+
+  const map = incoming
+    ? JSON.parse(remapping([own, incoming.map], () => null).toString())
+    : own;
 
   return { code: magic.toString(), map };
 }

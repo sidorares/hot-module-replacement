@@ -25,7 +25,9 @@ import.meta.hot.accept('./routes.js', async () => { await __hmrRefreshSpecifier(
 
 ## Source maps
 
-Rewritten modules include an inline source map. Run Node with `--enable-source-maps` so stack traces point at your original source lines.
+Every transformed module carries an inline source map covering the import rewrite and the preamble added above it. Run Node with `--enable-source-maps` so stack traces point at your original source lines.
+
+When another loader runs beneath this one — a JSX or TypeScript transform, or a build that wrote `.map` files — the map the module arrived with (an inline `data:` URL, or a file named by its `sourceMappingURL`) is composed into this one, so a stack resolves to the file that loader read rather than to the code it handed over.
 
 ## Limitations
 

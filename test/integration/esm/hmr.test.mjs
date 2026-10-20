@@ -206,4 +206,27 @@ describeIfSupported('ESM hot module replacement', () => {
       });
     });
   });
+  describe('source maps', () => {
+    it('points a stack at the line the code is on, preamble and all', done => {
+      const fixture = path.join(__dirname, '../../fixtures/esm/source-map/main.mjs');
+      const child = forkEsmFixture(fixture, message => {
+        if (message.message !== 'stacks') {
+          return;
+        }
+        try {
+          // a module with an import rewritten, and one with only the preamble
+          assert.match(message.thrown, /main\.mjs:4:\d+/);
+          assert.match(message.made, /dependency\.js:3:\d+/);
+        } catch (err) {
+          child.kill();
+          done(err);
+          return;
+        }
+        child.on('exit', () => done());
+        child.send('exit');
+      }, {
+        onError: err => done(err)
+      });
+    });
+  });
 });

@@ -1,6 +1,33 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { SourceMap } from 'node:module';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { parse } from 'acorn';
+import MagicString from 'magic-string';
 import { transformModuleSource } from '../../../esm/transform.mjs';
+
+/**
+ * Where `map` says the first `needle` in `code` came from: Node's own reading
+ * of the map, which is the one a stack trace goes through. Lines 1-based.
+ */
+function originOf(code, map, needle) {
+  const before = code.slice(0, code.indexOf(needle)).split('\n');
+  const entry = new SourceMap(map).findEntry(
+    before.length - 1,
+    before[before.length - 1].length
+  );
+  return {
+    source: path.basename(entry.originalSource),
+    line: entry.originalLine + 1
+  };
+}
+
+/** `code` as a loader below would hand it over, its map inline. */
+function withInlineMap(code, map) {
+  const payload = Buffer.from(JSON.stringify(map)).toString('base64');
+  return `${code}\n//# sourceMappingURL=data:application/json;base64,${payload}\n`;
+}
 
 const assertParses = code =>
   assert.doesNotThrow(() =>
@@ -73,5 +100,66 @@ describe('ESM import transform', () => {
     const { map } = transformModuleSource(input, 'fail.mjs');
     assert.ok(map);
     assert.equal(map.sources[0], 'fail.mjs');
+  });
+});
+
+describe('ESM transform source maps', () => {
+  const preamble = 'const a = 1;\nconst b = 2;\nconst c = 3;';
+
+  it('maps positions through the preamble', () => {
+    const input = `import x from './x.js';\nfunction f() {\n  throw new Error('line 3');\n}\n`;
+    const { code, map } = transformModuleSource(input, 'fail.mjs', { preamble });
+    assert.ok(code.startsWith(`${preamble}\n`));
+    assert.deepEqual(originOf(code, map, 'throw'), { source: 'fail.mjs', line: 3 });
+  });
+
+  it('maps a module with nothing to rewrite once the preamble goes on', () => {
+    const input = `function f() {\n  throw new Error('line 2');\n}\n`;
+    const { code, map } = transformModuleSource(input, 'plain.mjs', { preamble });
+    assert.ok(map, 'a preamble alone moves every line');
+    assert.deepEqual(originOf(code, map, 'throw'), { source: 'plain.mjs', line: 2 });
+  });
+
+  it('composes the inline map the module arrived with', () => {
+    // a loader below this one: two lines of its own on top of the file
+    const original = `function f() {\n  throw new Error('line 2');\n}\n`;
+    const below = new MagicString(original);
+    below.prepend(`import y from './y.js';\n// from the loader below\n`);
+    const input = withInlineMap(
+      below.toString(),
+      below.generateMap({ source: 'original.jsx', hires: true, includeContent: true })
+    );
+
+    const { code, map } = transformModuleSource(input, 'loaded.mjs', { preamble });
+    assert.deepEqual(originOf(code, map, 'throw'), { source: 'original.jsx', line: 2 });
+    assert.deepEqual(map.sourcesContent, [original]);
+    // the incoming comment is gone, so the map appended for this is the one read
+    assert.doesNotMatch(code, /sourceMappingURL/);
+    assertParses(code);
+  });
+
+  it('composes a map file next to the module', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'hmr-map-'));
+    try {
+      const original = `import y from './y.js';\nfunction f() {\n  throw new Error('line 3');\n}\n`;
+      const below = new MagicString(original);
+      below.prepend('// one line from a build\n');
+      writeFileSync(
+        path.join(dir, 'built.js.map'),
+        below.generateMap({ source: 'src.ts', hires: true }).toString()
+      );
+      const input = `${below}\n//# sourceMappingURL=built.js.map\n`;
+      const { code, map } = transformModuleSource(input, path.join(dir, 'built.js'));
+      assert.deepEqual(originOf(code, map, 'throw'), { source: 'src.ts', line: 3 });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves a module it does not touch with the map it came with', () => {
+    const input = withInlineMap('const x = 1;', { version: 3, sources: ['x.ts'], names: [], mappings: 'AAAA' });
+    const { code, map } = transformModuleSource(input, 'x.mjs');
+    assert.equal(code, input);
+    assert.equal(map, null);
   });
 });

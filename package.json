@@ -1,6 +1,6 @@
 {
   "name": "hot-module-replacement",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "description": "Hot module replacement for Node.js (CommonJS and ESM)",
   "main": "index.js",
   "scripts": {
